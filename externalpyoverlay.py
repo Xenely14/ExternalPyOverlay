@@ -6,6 +6,24 @@ import win32con
 import os
 
 
+class OverlayImage:
+    def __init__(self, image_path: str, alpha: float):
+        self.image = pygame.image.load(image_path)
+        if alpha <= 1:
+            self.image.set_alpha(alpha * 255)
+        else:
+            self.image.set_alpha(255)
+
+    def set_angle(self, angle: float):
+        self.image = pygame.transform.rotate(self.image, angle)
+
+    def set_size(self, x: int, y: int):
+        self.image = pygame.transform.scale(self.image, (x, y))
+
+    def mirror_image(self, x_flip: bool, y_flip: bool):
+        self.image = pygame.transform.flip(self.image, x_flip, y_flip)
+
+
 class Overlay:
     def __init__(self, link_window: str, delay: float) -> None:
         self.__link_window = link_window
@@ -16,11 +34,10 @@ class Overlay:
         os.environ['SDL_VIDEO_WINDOW_POS'] = str(pygame.display.Info().current_w) + "," + str(pygame.display.Info().current_h)
 
         self.__search_window_hwnd = win32gui.FindWindow(None, self.__link_window)
-        
+
         # If hwnd == 0
         if not self.__search_window_hwnd:
             raise Exception(f'Could not find window with {link_window} title')
-
 
         self.__overlay_screen = pygame.display.set_mode((0, 0), pygame.NOFRAME)
         self.__overlay_hwnd = pygame.display.get_wm_info()['window']
@@ -28,7 +45,7 @@ class Overlay:
         # 0x000000 is transparent color
         win32gui.GetWindowLong(self.__overlay_hwnd, -20)
         win32gui.SetWindowLong(self.__overlay_hwnd, win32con.GWL_EXSTYLE, win32gui.GetWindowLong(self.__overlay_hwnd, win32con.GWL_EXSTYLE) | win32con.WS_EX_TRANSPARENT | win32con.WS_EX_LAYERED)
-        win32gui.SetLayeredWindowAttributes(self.__overlay_hwnd, win32api.RGB(0, 0, 0), 255, win32con.LWA_COLORKEY | win32con.LWA_ALPHA)
+        win32gui.SetLayeredWindowAttributes(self.__overlay_hwnd, win32api.RGB(1, 1, 1), 255, win32con.LWA_COLORKEY | win32con.LWA_ALPHA)
         win32gui.BringWindowToTop(self.__overlay_hwnd)
         win32gui.SetWindowPos(self.__overlay_hwnd, -1, 0, 0, 0, 0, 2 | 1)
         win32gui.ShowWindow(self.__overlay_hwnd, win32con.SW_HIDE)
@@ -48,14 +65,20 @@ class Overlay:
     def draw_text(self, text: str, font: tuple, x: int, y: int, color: tuple, antialiasing: bool = True):
         self.__draw_list.append({'type': 'text', 'text': text, 'font': font, 'x': x, 'y': y, 'color': color, 'antialiasing': antialiasing})
 
+    def draw_custom_text(self, text: str, font: tuple, x: int, y: int, color: tuple, antialiasing: bool = True):
+        self.__draw_list.append({'type': 'custom_text', 'text': text, 'font': font, 'x': x, 'y': y, 'color': color, 'antialiasing': antialiasing})
+
+    def draw_image(self, x: int, y: int, image: object):
+        self.__draw_list.append({'type': 'image', 'x': x, 'y': y, 'image': image})
+
     def update_overlay(self) -> None:
         pygame.event.get()
-        self.__overlay_screen.fill((0, 0, 0))
+        self.__overlay_screen.fill((1, 1, 1))
 
         self.__window_rectangle = win32gui.GetWindowRect(self.__search_window_hwnd)
         win32gui.MoveWindow(self.__overlay_hwnd, self.__window_rectangle[0] + 8, self.__window_rectangle[1] + 8, self.__window_rectangle[2] - 8, self.__window_rectangle[3] - 8, True)
 
-        self.__overlay_screen.fill((0, 0, 0))
+        self.__overlay_screen.fill((1, 1, 1))
         if win32gui.GetWindowText(win32gui.GetForegroundWindow()) == self.__link_window:
 
             self.__window_rectangle = win32gui.GetWindowRect(self.__search_window_hwnd)
@@ -75,6 +98,12 @@ class Overlay:
                     self.__text_font = pygame.font.SysFont(*shape['font'])
                     self.__text_surface = self.__text_font.render(shape['text'], shape['antialiasing'], shape['color'])
                     self.__overlay_screen.blit(self.__text_surface, dest=(shape['x'], shape['y']))
+                if shape['type'] == 'custom_text':
+                    self.__text_font = pygame.font.Font(*shape['font'])
+                    self.__text_surface = self.__text_font.render(shape['text'], shape['antialiasing'], shape['color'])
+                    self.__overlay_screen.blit(self.__text_surface, dest=(shape['x'], shape['y']))
+                if shape['type'] == 'image':
+                    self.__overlay_screen.blit(shape['image'].image, (shape['x'], shape['y']))
 
         pygame.display.update()
         sleep(self.__delay)
