@@ -1,4 +1,5 @@
 from time import sleep
+
 import pygame
 import win32api
 import win32gui
@@ -28,7 +29,7 @@ class Overlay:
     def __init__(self, link_window: str, delay: float) -> None:
         self.__link_window = link_window
         self.__delay = delay
-        self.__draw_list = []
+        self.__draw_list = list()
 
         pygame.init()
         os.environ['SDL_VIDEO_WINDOW_POS'] = str(pygame.display.Info().current_w) + "," + str(pygame.display.Info().current_h)
@@ -107,8 +108,9 @@ class Overlay:
 
         pygame.display.update()
         sleep(self.__delay)
+
         self.__window_rectangle = win32gui.GetWindowRect(self.__search_window_hwnd)
         win32gui.MoveWindow(self.__overlay_hwnd, self.__window_rectangle[0] + 8, self.__window_rectangle[1] + 8, self.__window_rectangle[2] - 8, self.__window_rectangle[3] - 8, True)
         win32gui.ShowWindow(self.__overlay_hwnd, win32con.SW_SHOW)
         win32gui.SetWindowLong(self.__overlay_hwnd, win32con.GWL_EXSTYLE, win32gui.GetWindowLong(self.__overlay_hwnd, win32con.GWL_EXSTYLE) | win32con.WS_EX_TOOLWINDOW)
-        self.__draw_list = []
+        self.__draw_list = list()
